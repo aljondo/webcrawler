@@ -34,6 +34,7 @@ def getSafeLink(url):
 
 #sets cookies and also returns the status
 def checkResponseHeader(response):
+    global s
     global csrftoken, sessionid
     if 'Set-Cookie:' in response:
         for line in response.splitlines():
@@ -45,16 +46,19 @@ def checkResponseHeader(response):
     print(" c h e c k r e p o n s e h e a d er ")
     #print(response)
     if len(status) == 3:
-        #print(response.split("\r\n\r\n")[0]) <- print header in case somethings weird
+        print(response.split("\r\n\r\n")[0]) #<- print header in case somethings weird
         status = status[1]
     else:
         print("something is going wrong here. this is the response:")
         print(response)
         status = "something_is_wrong"
+        s.close()
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect((host, 80))
     return status
 
 def getRequest(route):
-    global csrftoken, sessionid
+    global csrftoken, sessionid, s
     #add cookies to request if they're there
     cookie = "in"
     if len(csrftoken) > 0:
@@ -106,6 +110,7 @@ def getLoginToken():
 def postLogin():
     # token = getLoginToken()
     # content = 'username=' + username + '&password=' + password + '&csrfmiddlewaretoken=' + token + '&next=/fakebook/'
+    global s
     getRequest(getSafeLink(login_page))
     content = 'username=' + username + '&password=' + password + '&csrfmiddlewaretoken=' + csrftoken + '&next=/fakebook/'
     request =  ('POST ' + getSafeLink(login_page) + ' HTTP/' + http_version + '\n'
@@ -174,4 +179,5 @@ def crawl():
 #if postLogin returns true aka it got a 302, then begin crawl
 if postLogin():
     crawl()
+s.close()
 print('Secret flags:', secret_flags)
