@@ -43,14 +43,14 @@ def checkResponseHeader(response):
             elif line.startswith('Set-Cookie: sessionid='):
                 sessionid = line[22:54]
     status = response.split("\r")[0].split(" ")
-    print(" c h e c k r e p o n s e h e a d er ")
+    # print(" c h e c k r e p o n s e h e a d er ")
     #print(response)
     if len(status) == 3:
-        print(response.split("\r\n\r\n")[0]) #<- print header in case somethings weird
+        # print(response.split("\r\n\r\n")[0]) #<- print header in case somethings weird
         status = status[1]
     else:
-        print("something is going wrong here. this is the response:")
-        print(response)
+        # print("something is going wrong here. this is the response:")
+        # print(response)
         status = "something_is_wrong"
         s.close()
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -69,8 +69,8 @@ def getRequest(route):
     else:
         request = ('GET ' + route + ' HTTP/' + http_version + '\r\n'
                     'Host: ' + host + '\r\n\r\n')
-    print('GET request:')
-    print(request)
+    # print('GET request:')
+    # print(request)
     s.send(request.encode('ascii'))
     response = s.recv(4096).decode('ascii')
     #print('GET response:')
@@ -104,8 +104,11 @@ def getRequest(route):
         #in both cases, we wanna try again with the same route anyway
         getRequest(route)
     html = response.split('\n\n', 1)[-1]
-    soup = BeautifulSoup(html, 'html.parser')
-    return soup
+    if html == '0\r\n\r\n':
+        return getRequest(route)
+    else:
+        soup = BeautifulSoup(html, 'html.parser')
+        return soup
 
 def getLoginToken():
     login_soup = getRequest(getSafeLink(login_page))
@@ -149,21 +152,23 @@ def crawl():
         if not soup:
             #got a 404, and there are no more links in the frontier
             break
-        #print("THE SOUP")
-        #print(soup)
+        # while len(soup) <= 1:
+        #     soup = getRequest(current_page)
+        # print("THE SOUP")
+        # print(soup)
         anchors = soup.find_all('a')
         h2s = soup.find_all('h2')
 
-        # print("anchors")
-        # print(anchors)
-        # print("headers")
-        # print(h2s)
+        print("Page:", current_page)
+        print("anchors")
+        print(anchors)
+        print("headers")
+        print(h2s)
 
         for a in anchors:
             if a['href'] not in explored and a['href'] not in unexplored:
                 if a['href'][:1] == '/' or a['href'][:25] == 'http://fring.ccs.neu.edu/':
                     unexplored.append(a['href'])
-                    print('Unexplored:', unexplored)
         #print("new frontier")
         #print(unexplored)
         for h in h2s:
@@ -181,6 +186,9 @@ def crawl():
 
         # Add current_page to explored
         explored.append(current_page)
+        print('Unexplored:', unexplored)
+        print('Explored:', explored)
+        print('\n')
 
 
 #if postLogin returns true aka it got a 302, then begin crawl
@@ -188,5 +196,6 @@ if postLogin():
     crawl()
 s.close()
 
-print('Unexplored:', unexplored)
+# print('Unexplored:', unexplored)
 print('Secret flags:', secret_flags)
+print('Explored:', explored)
