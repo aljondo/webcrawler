@@ -77,17 +77,30 @@ def getRequest(route):
     #print(response)
 
     status = checkResponseHeader(response)
-
+    chunked = False
+    print("from GET of " + route)
+    #print('Transfer-Encoding: chunked' in response)
+    #print('<html' not in response)
+    #print(status == '200')
+    #print("response:")
+    #print(response.split("\r\n\r\n")[1])
     # If the transfer is chunked and incomplete, keep receiving (as long as the status is 200)
-    while 'Transfer-Encoding: chunked' in response and '</html>' not in response and status == '200' :
+    while 'Transfer-Encoding: chunked' in response and '<html' not in response and status == '200' :
+        print("it's a chunker")
+        chunked = True
         response += s.recv(4096).decode('ascii')
+        print(response)
         status = checkResponseHeader(response)
-
+    if chunked:
+        print("CHUNKED")
+        print(response)
+        sys.exit(1)
     #print("WHAT IS THE STATUS OF THIS GET REQUEST")
     #print(status)
     if status == '200':
         #add route to explored
-        explored.append(route)
+        if not route in explored:
+            explored.append(route)
     elif status == '301':
         #TODO
         print("WE GOT US A 301 LADS ESKETIT")
@@ -97,17 +110,33 @@ def getRequest(route):
             return False
         else:
             #add route to explored, get the next route from the frontier and get that
-            explored.append(route)
+            if not route in explored:
+                explored.append(route)
             getRequest(unexplored.pop())
+    elif 'Internal Server Error' in response:
+        print("HOLD ON A SECOND")
+        print(response)
+        getRequest(route)
+        #sys.exit(1)
     else:
         #this means the status is 500, or something's going weirdly wrong.
         #in both cases, we wanna try again with the same route anyway
         getRequest(route)
-    html = response.split('\n\n', 1)[-1]
-    if html == '0\r\n\r\n':
+    #html = response.split('\r\n', 1)[-1]
+    html = response.split("\r\n\r\n")[1]
+    if html == '0\r\n\r\n' or html == '':
+        print("run it back on " + route)
+        print("\r\n")
+        s.close()
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect((host, 80))
         return getRequest(route)
     else:
         soup = BeautifulSoup(html, 'html.parser')
+        print("this is what it should return to crawl()")
+        print(html)
+        print("\r\n ...and this is what it's gonna return to crawl()")
+        print(soup)
         return soup
 
 def getLoginToken():
@@ -161,10 +190,15 @@ def crawl():
 
         print("Page:", current_page)
         print("anchors")
-        print(anchors)
-        print("headers")
-        print(h2s)
-
+        #print(anchors)
+        #print("headers")
+        #print(h2s)
+        
+        if '/friends/' in current_page and len(anchors) < 9:
+            print("too small. probably a chunk. let's check it")
+            print(soup)
+            sys.exit(1)
+        
         for a in anchors:
             if a['href'] not in explored and a['href'] not in unexplored:
                 if a['href'][:1] == '/' or a['href'][:25] == 'http://fring.ccs.neu.edu/':
@@ -173,6 +207,9 @@ def crawl():
         #print(unexplored)
         for h in h2s:
             if 'class' in h and h['class'] == 'secret_flag':
+                print("FLAG")
+                print(h)
+                sys.exit(1)
                 secret_flags.append(tag['content'])
         # Get tags from current_page
         # for tag in tags:
@@ -185,10 +222,10 @@ def crawl():
         #         secret_flags.append(tag['content'])
 
         # Add current_page to explored
-        explored.append(current_page)
-        print('Unexplored:', unexplored)
-        print('Explored:', explored)
-        print('\n')
+        if not current_page in explored:
+            explored.append(current_page)
+        #print('Unexplored:', unexplored)
+        #print('Explored:', explored)
 
 
 #if postLogin returns true aka it got a 302, then begin crawl
@@ -198,4 +235,4 @@ s.close()
 
 # print('Unexplored:', unexplored)
 print('Secret flags:', secret_flags)
-print('Explored:', explored)
+#print('Explored:', explored)
