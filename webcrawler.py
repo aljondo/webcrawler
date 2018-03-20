@@ -77,6 +77,12 @@ def getRequest(route):
     #print(response)
 
     status = checkResponseHeader(response)
+
+    # If the transfer is chunked and incomplete, keep receiving (as long as the status is 200)
+    while 'Transfer-Encoding: chunked' in response and '</html>' not in response and status == '200' :
+        response += s.recv(4096).decode('ascii')
+        status = checkResponseHeader(response)
+
     #print("WHAT IS THE STATUS OF THIS GET REQUEST")
     #print(status)
     if status == '200':
@@ -131,7 +137,7 @@ def postLogin():
         #print("trying again")
         postLogin()
     return True
-    
+
 # getRequest(getSafeLink(login_page))
 # On 200, get current page (should be root_page) and add it to unexplored
 
@@ -144,19 +150,20 @@ def crawl():
             #got a 404, and there are no more links in the frontier
             break
         #print("THE SOUP")
-        #print(soup) 
+        #print(soup)
         anchors = soup.find_all('a')
         h2s = soup.find_all('h2')
-        
-        #print("anchors")
-        #print(anchors)
-        #print("headers")
-        #print(h2s)
-        
+
+        # print("anchors")
+        # print(anchors)
+        # print("headers")
+        # print(h2s)
+
         for a in anchors:
             if a['href'] not in explored and a['href'] not in unexplored:
                 if a['href'][:1] == '/' or a['href'][:25] == 'http://fring.ccs.neu.edu/':
                     unexplored.append(a['href'])
+                    print('Unexplored:', unexplored)
         #print("new frontier")
         #print(unexplored)
         for h in h2s:
@@ -180,4 +187,6 @@ def crawl():
 if postLogin():
     crawl()
 s.close()
+
+print('Unexplored:', unexplored)
 print('Secret flags:', secret_flags)
