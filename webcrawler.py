@@ -76,6 +76,7 @@ def getRequest(route):
     response = s.recv(4096).decode('ascii')
     while response == '0\r\n\r\n':
         print('~~~~~~~~~~~~~~~~~~~~~~~~Bad response - resending request~~~~~~~~~~~~~~~~~~~~~~~~')
+        s.close()
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((host, 80))
         s.send(request.encode('ascii'))
