@@ -1,0 +1,41 @@
+High-level Approach:
+-------------------------------------------------------------------------------
+Our approach was to have a function to login once, then a function to handle
+GET requests that would be called repeatedly on all the unique links. This
+includes making the HTTP request, processing the response, handling the status
+code, and returning parsed HTML. Our plan was to keep track of links we have
+and links we haven't seen globally and run through the list of unexplored
+pages until they've all been searched.
+
+Challenges:
+-------------------------------------------------------------------------------
+We ran into some issues with handling chunked data. Even when an HTTP/1.0
+request was sent, an HTTP/1.1 response would be given and sometimes this
+response would be chunked. This made it difficult to start until we had a
+decent way to handle chunks. We also ran into a silly bug with HTML parsing
+that prevented us from logging the secret flags we were receiving. However,
+hunting down that bug gave us plenty of time to reinforce the rest of our
+solution.
+
+Testing:
+-------------------------------------------------------------------------------
+Since this solution keeps a good amount of state, we did most debugging by
+printing to STDOUT, e.g. printing the list of explored links at any given
+time, or printing the current page and all the <a> tags that are detected on
+that page. This was especially useful when we were ironing out bugs around our
+GET requests and making sure we were getting valid and expected responses.
+
+Contributions:
+-------------------------------------------------------------------------------
+We started by working independently until we both got around the point of
+making a POST request to login and making and parsing GET requests. From
+there, we compared our versions, mostly using Austin’s code with some
+additions from Ryan’s. Once our initial work was merged, we began to work more
+closely together, sitting side by side and committing changes sequentially.
+Austin committed some of the cookie logic, Ryan committed response checking,
+Austin committed HTML tag parsing, Ryan committed status code logic, etc,
+until we were ready to check for secret flags. We had some bugs with how we
+were checking for secret flags initially, but Ryan was able to sort that out
+and we had a good “rough draft” that could produce the desired output. Then
+Austin took care of cleaning the codebase up and getting the files ready for
+submission.
