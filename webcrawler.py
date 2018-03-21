@@ -23,6 +23,7 @@ explored = []
 unexplored = ['/fakebook/']
 
 secret_flags = []
+headers = []
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.connect((host, 80))
@@ -82,7 +83,7 @@ def getRequest(route):
         s.send(request.encode('ascii'))
         response = s.recv(4096).decode('ascii')
     print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~GET response~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
-    print(response)
+    #print(response)
 
     status = checkResponseHeader(response)
 
@@ -90,11 +91,11 @@ def getRequest(route):
     stats += 'chunked; ' if 'Transfer-Encoding: chunked' in response else 'not chunked; '
     stats += 'complete; ' if '</html>' in response else 'incomplete; '
     stats += status
-    print(stats)
+    #print(stats)
 
     # If the transfer is chunked and incomplete, keep receiving (as long as the status is 200)
     while 'Transfer-Encoding: chunked' in response and '</html>' not in response and status == '200':
-        print('reading more...')
+        #print('reading more...')
         response += s.recv(4096).decode('ascii')
         status = checkResponseHeader(response)
 
@@ -106,6 +107,7 @@ def getRequest(route):
     elif status == '301':
         #TODO
         print("WE GOT US A 301 LADS ESKETIT")
+        input("Press enter to continue")
     elif status == '403' or status == '404':
         if len(unexplored) == 0:
             #this means there's nothing left to explore. return False so the crawler knows
@@ -113,11 +115,11 @@ def getRequest(route):
         else:
             #add route to explored, get the next route from the frontier and get that
             explored.append(route)
-            getRequest(unexplored.pop())
+            return getRequest(unexplored.pop())
     else:
         #this means the status is 500, or something's going weirdly wrong.
         #in both cases, we wanna try again with the same route anyway
-        getRequest(route)
+        return getRequest(route)
     html = response.split('\r\n\r\n', 1)[-1]
     soup = BeautifulSoup(html, 'html.parser')
     return soup
@@ -172,10 +174,10 @@ def crawl():
         h2s = soup.find_all('h2')
 
         print("Page:", current_page)
-        print("anchors")
-        print(anchors)
-        print("headers")
-        print(h2s)
+        #print("anchors")
+        #print(anchors)
+        #print("headers")
+        #print(h2s)
 
         for a in anchors:
             if a['href'] not in explored and a['href'] not in unexplored:
@@ -184,8 +186,8 @@ def crawl():
         #print("new frontier")
         #print(unexplored)
         for h in h2s:
-            if 'class' in h and h['class'] == 'secret_flag':
-                secret_flags.append(tag['content'])
+            if 'FLAG:' in h.contents:
+                secret_flags.append(h)
         # Get tags from current_page
         # for tag in tags:
         #     # If tag is an anchor and that anchor has not been explored, add it to unexplored
@@ -209,5 +211,7 @@ if postLogin():
 s.close()
 
 # print('Unexplored:', unexplored)
+print('other headers')
+print(headers)
 print('Secret flags:', secret_flags)
-print('Explored:', explored)
+print('Explored:', len(explored))
