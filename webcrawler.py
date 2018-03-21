@@ -3,10 +3,8 @@ import sys
 import socket
 from bs4 import BeautifulSoup
 
-#username = sys.argv[1]
-#password = sys.argv[2]
-username = '1922276'
-password = 'Z53NLOS8'
+username = str(sys.argv[1])
+password = str(sys.argv[2])
 
 host = 'fring.ccs.neu.edu'
 root_site = 'http://' + host
@@ -17,13 +15,13 @@ http_version = '1.1'
 
 csrftoken = ''
 sessionid = ''
+next_location = ''
 logged_in = False
 
 explored = []
 unexplored = ['/fakebook/']
 
 secret_flags = []
-headers = []
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.connect((host, 80))
@@ -35,14 +33,15 @@ def getSafeLink(url):
 
 #sets cookies and also returns the status
 def checkResponseHeader(response):
-    global s
-    global csrftoken, sessionid
+    global s, csrftoken, sessionid, location
     if 'Set-Cookie:' in response:
         for line in response.splitlines():
             if line.startswith('Set-Cookie: csrftoken='):
                 csrftoken = line[22:54]
             elif line.startswith('Set-Cookie: sessionid='):
                 sessionid = line[22:54]
+            elif line.startswith('Location:'):
+                location = line.split(" ")[1]
     status = response.split("\r")[0].split(" ")
     # print(" c h e c k r e p o n s e h e a d er ")
     #print(response)
@@ -105,9 +104,13 @@ def getRequest(route):
         #add route to explored
         explored.append(route)
     elif status == '301':
-        #TODO
-        print("WE GOT US A 301 LADS ESKETIT")
-        input("Press enter to continue")
+        explored.append(route)
+        if next_location[:25] == 'http://fring.ccs.neu.edu/':
+            return getRequest(next_location[25:])
+        elif next_location[:1] == '/':
+            return getRequest(next_location)
+        else:
+            return getRequest(unexplored.pop())
     elif status == '403' or status == '404':
         if len(unexplored) == 0:
             #this means there's nothing left to explore. return False so the crawler knows
@@ -186,8 +189,20 @@ def crawl():
         #print("new frontier")
         #print(unexplored)
         for h in h2s:
-            if 'FLAG:' in h.contents:
-                secret_flags.append(h)
+            text = h.contents[0]
+            if 'FLAG:' in text:
+                print(" >>>>>>>>>>>>>>>>> CAUGHT ONE <<<<<<<<<<<<<<<<<<<<<< ")
+                flag = text.split(" ")[1]
+                secret_flags.append(flag)
+                with open("secret_flags", "a") as flag_file:
+                    flag_file.write(flag)
+                    flag_file.write("\n")
+                    input("got one, press enter to continue")
+                if len(secret_flags) == 5:
+                    print("all flags found")
+                    print(secret_flags)
+                    sys.exit(1)
+
         # Get tags from current_page
         # for tag in tags:
         #     # If tag is an anchor and that anchor has not been explored, add it to unexplored
@@ -211,7 +226,5 @@ if postLogin():
 s.close()
 
 # print('Unexplored:', unexplored)
-print('other headers')
-print(headers)
 print('Secret flags:', secret_flags)
 print('Explored:', len(explored))
